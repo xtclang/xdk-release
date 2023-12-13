@@ -1,0 +1,47 @@
+#
+# Platform independent Docker compose configuration that syncs out a git branch
+# (master is default) and/or a tag, and produced distribution installers for it.
+# This is equivalent to ./gradlew installDist, where all platform archives,
+# including Windows exe files, are built in the container.
+#
+# The build volume persists, and is rebuilt whenever it is detected that we
+# want to build a branch at a change that doesn't correspond to the last build
+# state. The cache volume also persists, so significant info is reused.
+# 
+
+version: '3.8'
+
+#
+# Set up secrets from the default locations, so that we can do things like
+# publications, artifact signing or other Gradle operations, where sensitive
+# information is stored outside the repository.
+#
+secrets:
+  gradle_properties:
+    file: ~/.gradle/gradle.properties
+
+volumes:
+  cache:
+  source:
+
+services:
+  distros:
+    platform: 'linux/amd64'
+    image: ghcr.io/xtclang/xdk-distros:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.xdk
+      args:
+        DOCKER_BUILDKIT: 1
+        GITHUB_BRANCH: ${GITHUB_BRANCH}
+    env_file:
+      - .env
+    environment:
+      GRADLE_LOG_LEVEL_FLAG: --info
+      GITHUB_BRANCH: ${GITHUB_BRANCH:-master}
+      GRADLE_TASK_NAME: ${GRADLE_TASK_NAME:-installDist}
+    volumes:
+      - cache:/home/gradle/.gradle
+      - source:/home/gradle/xvm
+      - ./build:/home/gradle/build
+    entrypoint: ['entrypoint-gradlew.sh']

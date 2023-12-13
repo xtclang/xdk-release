@@ -1,0 +1,53 @@
+ARG DOCKER_BUILDKIT=$DOCKER_BUILDKIT
+
+FROM --platform=linux/amd64 gradle:8.6.0-jdk21
+
+ARG TARGETARCH
+ARG BUILDARCH
+ENV TARGETARCH=$TARGETARCH
+ENV BUILDARCH=$BUILDARCH
+RUN echo "Building for $TARGETARCH on $BUILDARCH"
+
+ARG GRADLE_HOME=/home/gradle
+ENV GRADLE_HOME=$GRADLE_HOME
+
+ENV ORG_XTCLANG_INSTALL_DIST_EXE=true
+ENV COPY_DISTRIBUTIONS=true
+
+RUN apt-get update && apt-get install --no-install-recommends -y jq sudo
+
+#
+# Install the NSIS mystery bundle
+#
+USER root
+RUN apt-get update && apt-get install --no-install-recommends -y nsis
+COPY libs/nsis-linux-x86_64.tar.gz .
+RUN tar xvfz nsis-linux-x86_64.tar.gz -C /usr/share/ | tee $GRADLE_HOME/nsis.install.log
+RUN find /usr/share/nsis | tee $GRADLE_HOME/nsis.install.plugin.log
+
+#
+# Resolve requested GitHub branch. Default is master.
+#
+# If we just wanted the value at runtime, and not at build time as well, we would
+# not need to put these two lines of logic here.
+#
+ARG GITHUB_BRANCH
+ENV GITHUB_BRANCH=$GITHUB_BRANCH
+
+#
+# Copy the build script into the container.
+#
+COPY scripts/*.sh /usr/local/bin
+
+#
+# Hand over control to Gradle build user.
+#
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
+    && passwd -d gradle \
+    && adduser gradle sudo
+USER gradle
+RUN ln -s /usr/local/bin/entrypoint-gradlew.sh $GRADLE_HOME/build.sh
+RUN mkdir -p $GRADLE_HOME/build
+RUN sudo chown -R gradle:gradle $GRADLE_HOME
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-gradlew.sh"]
