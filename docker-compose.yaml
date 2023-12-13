@@ -1,0 +1,61 @@
+#
+# Platform independent docker compose configuration that syncs out a git branch
+# (master is default) and/or a tag, and produced distribution installers for it.
+# This is equivalent to ./gradlew install, or ./gradlew :xdk:dist<Archive>, where
+# <Archive> is "Tar", "Zip" or "Exe". In the last case, we will build a native
+# Windows executable installer. (This is done by a hard coded extra container
+# from image 'nsis' that shares the build volume with the container from image
+# 'xdk'
+#
+# We also create a separate docker volume for the Gradle cache/GRADLE_USER_HOME,
+# to be able to repeatedly build faster, and only build what is necessary, should
+# we change the input source tree.
+#
+
+#
+# Set up shared volumes for the repository clome/build directory from GitHub
+# and for the Gradle cache.
+#
+volumes:
+  src:
+  cache:
+
+#
+# Secrets are set up for the use case of manually or in CI needing to talk to
+# the GitHub Maven reopsitory for the XTC org, and similar tokens. 
+# TODO: Currently we don't have any functionality in this project that uses it.
+#
+#secrets:
+#  gradle_properties:
+#    file: $HOME/.gradle/gradle.properties
+
+#
+# Setup two linked containers, one that syncs and build an XDK version, and one
+# that runs on the x86-platform (emulated if not hosted on native x86, which may
+# be slow in some QEMU powered environments, but actually seems to work with decent
+# performance on e.g. Apple Silicon M1 with the docker build kit installed.
+# It is highly recommeded that you install the docker build kit anyway.
+# 
+services:
+  xdk:
+    image: ghcr.io/xtclang/xdk-builder
+    platform: linux/x86_64
+    build:
+      context: .
+      dockerfile: Dockerfile.xdk
+      args:     
+        DOCKER_BUILDKIT: 1
+        BASE_IMAGE: gradle:8.5.0-jdk21
+        GITHUB_BRANCH: xtc-first-plugin
+    environment:
+      GRADLE_TASK: install
+      GRADLE_LOG_LEVEL_FLAG: --info
+    network_mode: host
+#    secrets:
+#      - gradle_properties
+    volumes:
+      - src:/home/gradle/xvm
+      - cache:/home/gradle/.gradle
+      - ./build:/build
+      - $HOME:/home/dockerhost-${USER}
+    command: /bin/bash
