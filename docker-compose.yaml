@@ -1,0 +1,21 @@
+# Just POC that we can build all distribution installers, including Windows, on any platform
+# by running docker compose run build-xtc-distributions.
+
+services:
+  xtc-build-distros:
+    image: ghcr.io/xtclang/xtc-build-distos
+    build:
+      context: .
+      dockerfile: Dockerfile.xtc-build-distros
+      args:
+        # These can be overriden with system environment variables or an .env file
+        GITHUB_BRANCH: xtc-first-plugin
+        GITHUB_TAG: xtcplugin-rc1
+        GITHUB_TOKEN:
+    network_mode: host
+    command: /bin/bash
+    volumes:
+      # map up the dist directory on the host as destination if you want these locally.
+      - ./dist:/dist
+
+    
