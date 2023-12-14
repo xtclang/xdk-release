@@ -1,0 +1,69 @@
+#FROM debian:bookworm-slim
+
+#RUN git ls-remote https://github.com/xtclang/xvm |grep $GITHUB_BRANCH | awk {'print $1'} >last_branch_commit
+
+FROM gradle:8.5.0-jdk21
+ARG GITHUB_BRANCH
+ARG GITHUB_TAG
+ENV GITHUB_BRANCH=$GITHUB_BRANCH
+ENV GITHUB_TAG=$GITHUB_TAG
+RUN echo "VERSION: $XTCLANG_VERSION"
+RUN apt-get update && apt-get install -y ca-certificates git nsis --no-install-recommends && apt clean -y && rm -rf /var/lib/apt/lists/* 
+RUN echo "GITHUB_BRANCH: $GITHUB_BRANCH"
+
+#
+# Install nsis plugin. Sadly they seem to work on Mac and Linux, but only for X86. We can
+# try running this container in x86 mode if our install builder / release machine is aarc64,
+# but be warned, even with the latest QEMU versions, it does a fair amount of binary
+# translation and is significantly slower to deploy on non-x86 hardware. We could of course
+# do the installer in another followup machine! TODO that just has platform TODO and depends on
+#
+# TODO Nsis installer machine copying the build.
+# TODO Fix the unicode.
+# TODO Port the platform and the examples finally, send reviews to Gene
+# TODO Sort out the github internal repo, with a much simpler init script mechanism.
+# TODO Create a "gradle init" task using the xtc-template thing.
+# TODO Remove the "dev" repo from the build.
+# TODO Verify that Java 21 actually works in IntelliJ these days. The command line seems to work well.
+# TODO Turn this into a github action
+# TODO Implement GROUP And VERSION files, potentially overridden in the Plugin to make it even simpler
+#   to tag and build releases and do stuff like automatically break up a SNAPSHOT version.
+# TODO Add maven publication repo logic
+# TODO Verify that we can read from mavenCentral and gradleCentral
+# TODO Add signing to the release task.
+# TODO Implement github release action which does the version number right.
+# TODO Docker push release blobs too?
+
+WORKDIR /root
+
+#
+# Update GitHub version contents. Git clone will have the same hash if it's run as part of the build,
+# but the meta information contains the last commit hash, and other things, which will change the
+# Dockerfile cache value of a layer if the branch has been updated. Quite a clever trick
+#
+
+ADD https://api.github.com/repos/xtclang/xvm/git/refs/heads/$GITHUB_BRANCH version.json
+RUN git clone --branch $GITHUB_BRANCH --depth=1 https://github.com/xtclang/xvm xvm
+COPY .pkgs/nsis-linux-x86_64.tar.gz .
+RUN tar xvfz nsis-linux-x86_64.tar.gz
+RUN (cd xvm && ./gradlew build --no-scan --info --stacktraces |tee /root/build.log)
+RUN export BUILD_SIZE=$(du -sh /root/xvm)
+RUN echo "XTCLANG Container build finished: $BUILD_SIZE" >build-info.txt
+RUN cat build-info.txt
+
+#ARG GITHUB_SSH_PRIVATE_KEY
+#RUN mkdir /root/.ssh
+#RUN echo ${SSH_PRIVATE_KEY} > /root/.ssh/id_github
+#RUN mkdir -p /root/.ssh
+#RUN git clone https://github.com/xtclang/xvm.git
+#WORKDIR /root
+#RUN apt-get update && apt-get install -y git
+#RUN mkdir /root/.ssh/ && touch /root/.ssh/known_hosts && ssh-keyscan github.com >>/root/.ssh/known_hosts
+#RUN --mount=type=secret git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
+#RUN --mount=type=ssh git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
+#ARG GITHUB_TOKEN
+#ENV GITHUB_TOKEN=$GITHUB_TOKEN
+#ENV GITHUB_BRANCH=$GITHUB_BRANCH
+#ENV GITHUB_TAG=$GITHUB_TAG
+#COPY _git_checkout.sh /usr/local/bin
+#ENTRYPOINT ["_git_checkout.sh"]
