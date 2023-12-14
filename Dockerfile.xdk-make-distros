@@ -1,0 +1,39 @@
+#FROM debian:bookworm-slim
+
+#RUN git ls-remote https://github.com/xtclang/xvm |grep $GITHUB_BRANCH | awk {'print $1'} >last_branch_commit
+
+FROM gradle:8.5.0-jdk21
+WORKDIR /root
+ARG GITHUB_BRANCH
+ARG GITHUB_TAG
+ENV GITHUB_BRANCH=$GITHUB_BRANCH
+ENV GITHUB_TAG=$GITHUB_TAG
+RUN apt-get update && apt-get install -y ca-certificates git nsis --no-install-recommends && apt clean -y && rm -rf /var/lib/apt/lists/* 
+RUN echo "GITHUB_BRANCH: $GITHUB_BRANCH"
+ADD https://api.github.com/repos/xtclang/xvm/git/refs/heads/$GITHUB_BRANCH version.json
+RUN git clone --branch $GITHUB_BRANCH --depth=1 https://github.com/xtclang/xvm xvm
+COPY .pkgs/nsis-linux-x86_64.tar.gz .
+RUN tar xvfz nsis-linux-x86_64.tar.gz
+WORKDIR /root/xvm
+RUN ./gradlew build --no-scan --info --stacktraces |tee /root/build.log
+WORKDIR /root
+
+#ARG GITHUB_SSH_PRIVATE_KEY
+#RUN mkdir /root/.ssh
+#RUN echo ${SSH_PRIVATE_KEY} > /root/.ssh/id_github
+#RUN mkdir -p /root/.ssh
+#RUN git clone https://github.com/xtclang/xvm.git
+#WORKDIR /root
+#RUN apt-get update && apt-get install -y git
+#RUN mkdir /root/.ssh/ && touch /root/.ssh/known_hosts && ssh-keyscan github.com >>/root/.ssh/known_hosts
+#RUN --mount=type=secret git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
+#RUN --mount=type=ssh git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
+#ARG GITHUB_TOKEN
+#ENV GITHUB_TOKEN=$GITHUB_TOKEN
+#ENV GITHUB_BRANCH=$GITHUB_BRANCH
+#ENV GITHUB_TAG=$GITHUB_TAG
+#COPY _git_checkout.sh /usr/local/bin
+
+#ENTRYPOINT ["_git_checkout.sh"]
+RUN echo "Container finished."
+#CMD ["/bin/bash"]

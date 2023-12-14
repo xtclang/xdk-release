@@ -1,21 +1,57 @@
 # Just POC that we can build all distribution installers, including Windows, on any platform
 # by running docker compose run build-xtc-distributions.
 
+secrets:
+  gradle_properties:
+    file: $HOME/.gradle/gradle.properties
 services:
-  xtc-build-distros:
-    image: ghcr.io/xtclang/xtc-build-distos
+  xdk-make-distros:
+    image: ghcr.io/xdklang/xdk-make-distros
     build:
       context: .
-      dockerfile: Dockerfile.xtc-build-distros
+      dockerfile: Dockerfile.xdk-make-distros
       args:
         # These can be overriden with system environment variables or an .env file
         GITHUB_BRANCH: xtc-first-plugin
-        GITHUB_TAG: xtcplugin-rc1
+        GITHUB_TAG: xdkplugin-rc1
         GITHUB_TOKEN:
     network_mode: host
     command: /bin/bash
+    secrets:
+      - gradle_properties
+    environment:
+      TEST_ENV:
     volumes:
       # map up the dist directory on the host as destination if you want these locally.
       - ./dist:/dist
 
-    
+# TODO: Add functionality to actually build the native launchers
+# TODO: Hook up the XDK release process and repo.
+# TODO: Handle tags and branches for the relase. Use a gradle plugin in this repo?
+# TODO: Readme
+# TODO: JReleaser
+# TODO: Signing from corporate secrets
+# TODO: https://buildingtents.com/2023/03/31/publishing-java-libraries-to-maven-central-with-github-actions-and-gradle-gradle-7-8-in-2023/
+# TODO: Make sure buildkit is installed. Link to https://docs.docker.com/build/buildkit/
+
+#version: '1.0'
+#stages:
+#  - prepare
+#  - build
+#steps:
+#  main_clone:
+#    title: Cloning main repository...
+#    stage: prepare
+#    type: git-clone
+#    repo: 'codefresh-contrib/gradle-sample-app'
+#    revision: master
+#    git: github
+#  BuildingDockerImage:
+#    title: Building Docker Image
+#    stage: build
+#    type: build
+#    image_name: gradle-sample-app
+#    working_directory: ./
+#    tag: 'multi-stage'
+#    dockerfile: Dockerfile
+
