@@ -1,64 +1,61 @@
-# Just POC that we can build all distribution installers, including Windows, on any platform
-# by running docker compose run build-xtc-distributions.
+#
+# Platform independent docker compose configuration that syncs out a git branch
+# (master is default) and/or a tag, and produced distribution installers for it.
+# This is equivalent to ./gradlew install, or ./gradlew :xdk:dist<Archive>, where
+# <Archive> is "Tar", "Zip" or "Exe". In the last case, we will build a native
+# Windows executable installer. (This is done by a hard coded extra container
+# from image 'nsis' that shares the build volume with the container from image
+# 'xdk'
+#
+# We also create a separate docker volume for the Gradle cache/GRADLE_USER_HOME,
+# to be able to repeatedly build faster, and only build what is necessary, should
+# we change the input source tree.
+#
 
-secrets:
-  gradle_properties:
-    file: $HOME/.gradle/gradle.properties
-
+#
+# Set up shared volumes for the repository clome/build directory from GitHub
+# and for the Gradle cache.
+#
 volumes:
   src:
   cache:
 
+#
+# Secrets are set up for the use case of manually or in CI needing to talk to
+# the GitHub Maven reopsitory for the XTC org, and similar tokens. 
+# TODO: Currently we don't have any functionality in this project that uses it.
+#
+secrets:
+  gradle_properties:
+    file: $HOME/.gradle/gradle.properties
+
+#
+# Setup two linked containers, one that syncs and build an XDK version, and one
+# that runs on the x86-platform (emulated if not hosted on native x86, which may
+# be slow in some QEMU powered environments, but actually seems to work with decent
+# performance on e.g. Apple Silicon M1 with the docker build kit installed.
+# It is highly recommeded that you install the docker build kit anyway.
+# 
 services:
-  xtclang-distros:
-    image: ghcr.io/xtclang/distros
+  xdk:
+    image: ghcr.io/xtclang/xdk-builder
+    platform: linux/x86_64
     build:
       context: .
-      dockerfile: Dockerfile.xtclang-distros
-      args:
+      dockerfile: Dockerfile.xdk
+      args:     
+        DOCKER_BUILDKIT: 1
+        BASE_IMAGE: gradle:8.5.0-jdk21
         GITHUB_BRANCH: xtc-first-plugin
-        GITHUB_TAG: 
-        GITHUB_TOKEN:
-        TOKEN:
     environment:
-      XTCLANG_VERSION: ${XTCLANG_VERSION:-local-release-SNAPSHOT}
+      GRADLE_TASK: install
+      GRADLE_LOG_LEVEL_FLAG: --info
     network_mode: host
-    command: /bin/bash
     secrets:
       - gradle_properties
     volumes:
-      # map up the dist directory on the host as destination if you want these locally.
       - src:/home/gradle/xvm
-      - cache:/home/gradle/.gradle      
-
-# TODO: Add functionality to actually build the native launchers
-# TODO: Verify if the secrets file works and can be read in the countainer, or through a secret mount.
-# TODO: Hook up the XDK release process and repo.
-# TODO: Handle tags and branches for the relase. Use a gradle plugin in this repo?
-# TODO: Readme
-# TODO: JReleaser
-# TODO: Signing from corporate secrets
-# TODO: https://buildingtents.com/2023/03/31/publishing-java-libraries-to-maven-central-with-github-actions-and-gradle-gradle-7-8-in-2023/
-# TODO: Make sure buildkit is installed. Link to https://docs.docker.com/build/buildkit/
-
-#version: '1.0'
-#stages:
-#  - prepare
-#  - build
-#steps:
-#  main_clone:
-#    title: Cloning main repository...
-#    stage: prepare
-#    type: git-clone
-#    repo: 'codefresh-contrib/gradle-sample-app'
-#    revision: master
-#    git: github
-#  BuildingDockerImage:
-#    title: Building Docker Image
-#    stage: build
-#    type: build
-#    image_name: gradle-sample-app
-#    working_directory: ./
-#    tag: 'multi-stage'
-#    dockerfile: Dockerfile
-
+      - cache:/home/gradle/.gradle
+      - ./build:/build
+      - $HOME:/home/dockerhost-${USER}
+    command: /bin/bash

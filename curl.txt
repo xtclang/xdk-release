@@ -1,1 +1,0 @@
-https://raw.githubusercontent.com/xtclang/xvm/xtc-first-plugin/gradle/config/repos/xtc-repo-minimal.init.gradle.kts.template
