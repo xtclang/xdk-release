@@ -1,15 +1,48 @@
-#FROM debian:bookworm-slim
-
 #RUN git ls-remote https://github.com/xtclang/xvm |grep $GITHUB_BRANCH | awk {'print $1'} >last_branch_commit
 
 FROM gradle:8.5.0-jdk21
+
+# Running the image should get the right source, and build it and create installers.
+# Should run nsis in a qemu or native environment too? 
 ARG GITHUB_BRANCH
 ARG GITHUB_TAG
 ENV GITHUB_BRANCH=$GITHUB_BRANCH
 ENV GITHUB_TAG=$GITHUB_TAG
-RUN echo "VERSION: $XTCLANG_VERSION"
-RUN apt-get update && apt-get install -y ca-certificates git nsis --no-install-recommends && apt clean -y && rm -rf /var/lib/apt/lists/* 
-RUN echo "GITHUB_BRANCH: $GITHUB_BRANCH"
+
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    ca-certificates \
+    git \
+    curl \
+    unzip \
+    && apt clean -y && rm -rf /var/lib/apt/lists/*
+
+COPY _gradlew_build.sh /usr/local/bin
+USER gradle
+ADD https://api.github.com/repos/xtclang/xvm/git/refs/heads/$GITHUB_BRANCH version.json
+RUN git clone --branch $GITHUB_BRANCH --depth=1 https://github.com/xtclang/xvm xvm
+
+#	(cd /xvm && ./gradlew build --no-scan --info --stacktrace | tee /build-$GITHUB_BRANCH.log)	
+#WORKDIR /usr/share/nsis
+#COPY .pkgs/nsis-linux-x86_64.tar.gz .
+#RUN tar xvfz nsis-linux-x86_64.tar.gz
+#RUN rm -fr nsis-linux-x86_64.tar.gza
+# SHELL ["_gradlew_build.sh"]
+CMD ["/bin/bash"]
+
+#
+# Update GitHub version contents. Git clone will have the same hash if it's run as part of the build,
+# but the meta information contains the last commit hash, and other things, which will change the
+# Dockerfile cache value of a layer if the branch has been updated. Quite a clever trick
+#
+#WORKDIR /root
+#ADD https://api.github.com/repos/xtclang/xvm/git/refs/heads/$GITHUB_BRANCH version.json
+#ENTRYPOINT ["./_gradlew_build.sh"]
+# Todo artifact builder:
+#RUN mkdir /root/.ssh/ && touch /root/.ssh/known_hosts && ssh-keyscan github.com >>/root/.ssh/known_hosts
+#RUN --mount=type=secret git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
+#RUN --mount=type=ssh git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
+#FROM debian:bookworm-slim
+#FROM alpine:3.19.0
 
 #
 # Install nsis plugin. Sadly they seem to work on Mac and Linux, but only for X86. We can
@@ -34,36 +67,3 @@ RUN echo "GITHUB_BRANCH: $GITHUB_BRANCH"
 # TODO Implement github release action which does the version number right.
 # TODO Docker push release blobs too?
 
-WORKDIR /root
-
-#
-# Update GitHub version contents. Git clone will have the same hash if it's run as part of the build,
-# but the meta information contains the last commit hash, and other things, which will change the
-# Dockerfile cache value of a layer if the branch has been updated. Quite a clever trick
-#
-
-ADD https://api.github.com/repos/xtclang/xvm/git/refs/heads/$GITHUB_BRANCH version.json
-RUN git clone --branch $GITHUB_BRANCH --depth=1 https://github.com/xtclang/xvm xvm
-COPY .pkgs/nsis-linux-x86_64.tar.gz .
-RUN tar xvfz nsis-linux-x86_64.tar.gz
-RUN (cd xvm && ./gradlew build --no-scan --info --stacktraces |tee /root/build.log)
-RUN export BUILD_SIZE=$(du -sh /root/xvm)
-RUN echo "XTCLANG Container build finished: $BUILD_SIZE" >build-info.txt
-RUN cat build-info.txt
-
-#ARG GITHUB_SSH_PRIVATE_KEY
-#RUN mkdir /root/.ssh
-#RUN echo ${SSH_PRIVATE_KEY} > /root/.ssh/id_github
-#RUN mkdir -p /root/.ssh
-#RUN git clone https://github.com/xtclang/xvm.git
-#WORKDIR /root
-#RUN apt-get update && apt-get install -y git
-#RUN mkdir /root/.ssh/ && touch /root/.ssh/known_hosts && ssh-keyscan github.com >>/root/.ssh/known_hosts
-#RUN --mount=type=secret git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
-#RUN --mount=type=ssh git clone git@github.com:xtclang/xvm.git/github.com/xtclang/xvm.git
-#ARG GITHUB_TOKEN
-#ENV GITHUB_TOKEN=$GITHUB_TOKEN
-#ENV GITHUB_BRANCH=$GITHUB_BRANCH
-#ENV GITHUB_TAG=$GITHUB_TAG
-#COPY _git_checkout.sh /usr/local/bin
-#ENTRYPOINT ["_git_checkout.sh"]

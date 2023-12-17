@@ -5,6 +5,10 @@ secrets:
   gradle_properties:
     file: $HOME/.gradle/gradle.properties
 
+volumes:
+  src:
+  cache:
+
 services:
   xtclang-distros:
     image: ghcr.io/xtclang/distros
@@ -13,7 +17,7 @@ services:
       dockerfile: Dockerfile.xtclang-distros
       args:
         GITHUB_BRANCH: xtc-first-plugin
-        GITHUB_TAG: xdkplugin-rc1
+        GITHUB_TAG: 
         GITHUB_TOKEN:
         TOKEN:
     environment:
@@ -24,7 +28,8 @@ services:
       - gradle_properties
     volumes:
       # map up the dist directory on the host as destination if you want these locally.
-      - ./dist:/dist
+      - src:/home/gradle/xvm
+      - cache:/home/gradle/.gradle      
 
 # TODO: Add functionality to actually build the native launchers
 # TODO: Verify if the secrets file works and can be read in the countainer, or through a secret mount.
