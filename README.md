@@ -11,11 +11,16 @@ The prerequisite is that you use Docker BuildKit and Docker Compose.
 To run:
 
 ```
-docker compose build
 docker compose up
 ```
 
 There should be a directory called "build" in your cloned folder with the build log, and distributions in .exe, zip and tar.gz form.
+
+### Internals
+
+The build process creates docker volumes on your host system for the checked out source and the cache. These persist between container runs. This is useful, because it still enabled Gradle caching between repeated builds. We do not want to start from a completely clean system.  On the other hand, it's very useful to be able to do the build process with nothing but the Gradle/Java base image, to ensure that it will install for any user on any new system, and confirm that there are no other requirements for XDK to build.
+
+If you *do* want to start from scratch again, you need to remove or prune the Docker volumes from your host system. You will see them if you execute "docker volume ls | grep xdk". They should have the volume type "local".
 
 ### Work in progress.
 
