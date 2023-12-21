@@ -1,0 +1,3 @@
+# Preserve the build folder, because Docker on Linux does not accept a bind
+# mount to a directory that doesn't yet exist. It seems to work fine on other
+# platforms, and that's how it should be according to the Docker documentation.
