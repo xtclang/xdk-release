@@ -9,13 +9,13 @@ ENV GRADLE_HOME=$GRADLE_HOME
 # Of course we could pass it to the Gradle process, or echo it to a properties file
 # in the container, but this is the "build everything on any platform" docker container,
 # so it correctly reflects the use case. We probably never want it as default, since
-# absolutely no one wants to install the suspicious NSIS bits in any other environment.
+# absolutely no one wants to install the mysterious NSIS bits in any other environment.
 #
 ARG ORG_XTCLANG_INSTALL_DIST_EXE=true
 ENV ORG_XTCLANG_INSTALL_DIST_EXE=$ORG_XTCLANG_INSTALL_DIST_EXE
 
 #
-# Install nsis mystery bundle
+# Install the NSIS mystery bundle
 #
 RUN apt-get update && apt-get install --no-install-recommends -y nsis
 COPY libs/nsis-linux-x86_64.tar.gz .
@@ -23,7 +23,9 @@ RUN tar xvfz nsis-linux-x86_64.tar.gz -C /usr/share/ | tee $GRADLE_HOME/nsis.ins
 COPY scripts/* /usr/local/bin
 RUN find /usr/share/nsis | tee $GRADLE_HOME/nsis.install.plugin.log
 
-# Copy the build script
+#
+# Copy the build script into the container.
+#
 COPY scripts/*.sh /usr/local/bin
 
 #
@@ -34,7 +36,6 @@ COPY scripts/*.sh /usr/local/bin
 # hash is invalidated if the checked out branch has changed from the last build. The
 # Gradle build script, of course, can't know that at the build stage. 
 #
-
 USER gradle
 ARG GITHUB_BRANCH
 ENV GITHUB_BRANCH=$GITHUB_BRANCH
