@@ -11,6 +11,12 @@ The prerequisite is that you use Docker BuildKit and Docker Compose.
 To run:
 
 ```
+[GITHUB_BRANCH=my-branch-name] docker compose up [--build]
+```
+
+or, if you want to build the latest master and don't need to refresh the build image, simply:
+
+```
 docker compose up
 ```
 
@@ -36,4 +42,4 @@ Separate solutions that should be added to this branch are:
 6) installLocalDist could be called as a configurable option.
 7) Significantly increase the ergonomics by using the Gradle Docker Compose plugin, and perhaps unify with CI/CD pipeline or even the XDK repo.
 8) Use file system watching if the host architecture supports that (i.e. is the same as the container architecture)
-
+9) Clean out all build state and restart similar to the purge script in the XVM repo.
