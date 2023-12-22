@@ -1,6 +1,23 @@
 #!/bin/bash
 
-echo "OS_ARCH: $OS_ARCH"
+function dump_env() {
+    echo "System environment:"
+    env | sort | grep GRADLE
+    env | sort | grep GITHUB
+    echo "HOME: $HOME"
+    echo "Current working directory: $PWD"
+}    
+
+function dump_storage() {
+    echo "Checking existing volumes:"
+    du -sh .gradle
+    du -sh xvm
+    if [ -d xvm/xdk/build/distributions ]; then
+	du -sh xvm/xdk/build/distributions
+    fi
+}    
+
+echo "Running container as $TARGETARCH on a host architecture of $BUILDARCH"
 
 GRADLE_TASK=$1
 if [ -z $GRADLE_TASK ]; then
@@ -8,36 +25,18 @@ if [ -z $GRADLE_TASK ]; then
     export GRADLE_TASK="install"
 fi
 
-function dump_env() {
-    env | sort | grep GRADLE
-    env | sort | grep GITHUB
-    echo "HOME: $HOME"
-    echo "Current working directory: $PWD"
-}    
-    
-echo "Running Gradle task: $GRADLE_TASK..."
-
-# TODO. This should really be the host architecture
-arch=$(uname -m)
-echo "ARCH: "$arch
-if [ "$arch" == "x86_64" ]; then
-    echo "Install task."
+GRADLE_FLAGS=""
+if [ "$BUILDARCH" != "TARGETARCH" ]; then
+    echo "WARNING: Container is running on a different architecture than host; file system watch will be disabled."
     GRADLE_FLAGS="--no-watch-fs"
-else
-    GRADLE_FLAGS=""
 fi
 
-echo "Checking existing volumes:"
-du -sh xvm
-du -sh .gradle
-
-echo "Environment:"
-env | sort | grep GRADLE
-env | sort | grep GITHUB
+dump_env
+dump_storage
 
 log_path="+%F-%T"
 
-pushd xvm
+pushd xvm >/dev/null
 echo "Current working directory for build: $PWD"
 gradle_cmd="./gradlew $GRADLE_TASK --no-scan --stacktrace $GRADLE_FLAGS"
 
@@ -57,9 +56,7 @@ popd
 
 echo "Current working directory after build: $PWD"
 
-du -sh xvm 
-du -sh xvm/xdk/build/distributions
-du -sh .gradle
+dump_storage
 
 end_time=$(date "+%F-%T")
 echo >>$log_path "$GITHUB_BRANCH Build finished at: $end_time\n"

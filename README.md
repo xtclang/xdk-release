@@ -38,8 +38,8 @@ Separate solutions that should be added to this branch are:
 2) Homebrew support (document use cases and configuration)
 3) Git release generation, through a Gradle/Git release plugin, and version file management.
 4) Up to date checks of a repo and its dependencies.
+5) Clone source in container, perhaps? We can reuse the volume src, can't we?
 5) Logic to also do ./gradlew publish* to various data sources.
 6) installLocalDist could be called as a configurable option.
 7) Significantly increase the ergonomics by using the Gradle Docker Compose plugin, and perhaps unify with CI/CD pipeline or even the XDK repo.
-8) Use file system watching if the host architecture supports that (i.e. is the same as the container architecture)
 9) Clean out all build state and restart similar to the purge script in the XVM repo.
