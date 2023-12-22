@@ -29,6 +29,15 @@ RUN find /usr/share/nsis | tee $GRADLE_HOME/nsis.install.plugin.log
 COPY scripts/*.sh /usr/local/bin
 
 #
+# Resolve requested GitHub branch. Default is master.
+#
+# If we just wanted the value at runtime, and not at build time as well, we would
+# not need to put these two lines of logic here.
+#
+ARG GITHUB_BRANCH
+ENV GITHUB_BRANCH=$GITHUB_BRANCH
+
+#
 # Check out requested branch, update if stale or changed.
 #
 # The ADD updates GitHub version contents to a local file. As we do the Gradle build
@@ -37,8 +46,6 @@ COPY scripts/*.sh /usr/local/bin
 # Gradle build script, of course, can't know that at the build stage. 
 #
 USER gradle
-ARG GITHUB_BRANCH
-ENV GITHUB_BRANCH=$GITHUB_BRANCH
 ADD https://api.github.com/repos/xtclang/xvm/git/refs/heads/$GITHUB_BRANCH version.json
 RUN git clone --branch $GITHUB_BRANCH --depth=1 https://github.com/xtclang/xvm xvm
 ENTRYPOINT ["gradlew-build.sh", "install"]

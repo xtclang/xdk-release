@@ -21,13 +21,14 @@ volumes:
   cache:
 
 #
-# Secrets are set up for the use case of manually or in CI needing to talk to
-# the GitHub Maven reopsitory for the XTC org, and similar tokens. 
-# TODO: Currently we don't have any functionality in this project that uses it.
+# Set up secrets from the default locations, so that we can do things like
+# publications, artifact signing or other Gradle operations, where sensitive
+# information is stored outside the repository.
 #
-#secrets:
-#  gradle_properties:
-#    file: $HOME/.gradle/gradle.properties
+secrets:
+  gradle_properties:
+    external: true
+    file: $HOME/gradle/gradle.properties
 
 services:
   xdk:
@@ -39,13 +40,11 @@ services:
       args:     
         DOCKER_BUILDKIT: 1
         BASE_IMAGE: gradle:8.5.0-jdk21
-        GITHUB_BRANCH: xtc-first-plugin
+        GITHUB_BRANCH: ${GITHUB_BRANCH:-master}
     environment:
-      GRADLE_TASK: install
+      GRADLE_TASK: ${GRADLE_TASK:-install}
       GRADLE_LOG_LEVEL_FLAG: --info
     network_mode: host
-#    secrets:
-#      - gradle_properties
     volumes:
       - src:/home/gradle/xvm
       - cache:/home/gradle/.gradle
@@ -53,3 +52,5 @@ services:
         source: ./build
         target: /build
     command: /bin/bash
+#    secrets:
+#      - gradle_properties
