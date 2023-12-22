@@ -35,3 +35,5 @@ Separate solutions that should be added to this branch are:
 5) Logic to also do ./gradlew publish* to various data sources.
 6) installLocalDist could be called as a configurable option.
 7) Significantly increase the ergonomics by using the Gradle Docker Compose plugin, and perhaps unify with CI/CD pipeline or even the XDK repo.
+8) Use file system watching if the host architecture supports that (i.e. is the same as the container architecture)
+
